@@ -99,11 +99,7 @@ public class Controller extends HttpServlet {
 			return;
 		}
 
-		try {
-			conn = ds.getConnection();
-		} catch (SQLException e) {
-			out.println("Cannot connect to database !");
-		}
+		conn = connectToDatabase(conn);
 
 		Account account = new Account(conn);
 
@@ -119,12 +115,35 @@ public class Controller extends HttpServlet {
 			break;
 		}
 
+		closeDatabase(conn);
+	}
+
+	/**
+	 * if the keyword 'try' exists in a function, it should be the very first
+	 * word in the function and that there should be nothing after the
+	 * catch/finally blocks.
+	 */
+	private void closeDatabase(Connection conn) {
 		try {
 			conn.close();
 		} catch (SQLException e) {
 			// TODO Auto-generated catch block
 			e.printStackTrace();
 		}
+	}
+
+	/**
+	 * if the keyword 'try' exists in a function, it should be the very first
+	 * word in the function and that there should be nothing after the
+	 * catch/finally blocks.
+	 */
+	private Connection connectToDatabase(Connection conn) {
+		try {
+			conn = ds.getConnection();
+		} catch (SQLException e) {
+			out.println("Cannot connect to database !");
+		}
+		return conn;
 	}
 
 	/**
@@ -140,10 +159,13 @@ public class Controller extends HttpServlet {
 		setAtributesToEmptyString(request);
 		request.setAttribute("email", email);
 
-		validInputOfNewAccount(request, response, account);
+		validUser(request, response, account);
 	}
 
-	private void validInputOfNewAccount(HttpServletRequest request, HttpServletResponse response, Account account)
+	/**
+	 * Zisti ci moze vytvorit daneho usera
+	 */
+	private void validUser(HttpServletRequest request, HttpServletResponse response, Account account)
 			throws ServletException, IOException {
 		if (!password.equals(repeatPassword)) {
 			request.setAttribute("message", "Passwords do not match.");
@@ -155,18 +177,26 @@ public class Controller extends HttpServlet {
 				request.setAttribute("message", user.getMessage());
 				request.getRequestDispatcher("/createaccount.jsp").forward(request, response);
 			} else {
-				try {
-					if (account.exists(email)) {
-						request.setAttribute("message", "An account with this email address already exists");
-						request.getRequestDispatcher("/createaccount.jsp").forward(request, response);
-					} else {
-						account.create(email, password);
-						request.getRequestDispatcher("/createsuccess.jsp").forward(request, response);
-					}
-				} catch (SQLException e) {
-					request.getRequestDispatcher("/error.jsp").forward(request, response);
-				}
+				validAccount(request, response, account);
 			}
+		}
+	}
+
+	/**
+	 * Zisti ci moze vytvorit account
+	 */
+	private void validAccount(HttpServletRequest request, HttpServletResponse response, Account account)
+			throws ServletException, IOException {
+		try {
+			if (account.exists(email)) {
+				request.setAttribute("message", "An account with this email address already exists");
+				request.getRequestDispatcher("/createaccount.jsp").forward(request, response);
+			} else {
+				account.create(email, password);
+				request.getRequestDispatcher("/createsuccess.jsp").forward(request, response);
+			}
+		} catch (SQLException e) {
+			request.getRequestDispatcher("/error.jsp").forward(request, response);
 		}
 	}
 
